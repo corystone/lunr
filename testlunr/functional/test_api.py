@@ -27,7 +27,6 @@
 # -------------------------------------------------------------------
 
 from testlunr.functional import LunrTestCase, SkipTest, LunrApiService
-from lunr.common.config import Config
 from lunr.storage.helper.utils import execute
 from socket import gethostbyname
 from lunr.common import config
@@ -69,11 +68,6 @@ class AsyncRequest(Thread):
 class LunrApiTestCase(LunrTestCase):
 
     def setUp(self):
-        # Default the config to the local user and our current dir
-        self.volume_type = os.environ.get('API_VOLUME_TYPE', 'vtype')
-        self.skip_admin = Config.to_bool(os.environ.get('API_SKIP_ADMIN',
-                                                        'false'))
-
         # Start the Lunr API Service if needed
         self.api = LunrApiService()
 
