@@ -26,7 +26,7 @@ WORKING_DIR=$(cd $(dirname "$0") && pwd)
 
 # Install system packages
 sudo apt-get install lvm2 iscsitarget open-iscsi python-pip\
-    cgroup-bin screen curl qemu-utils blktap-utils --yes --force-yes
+    cgroup-bin screen curl qemu-utils blktap-utils libffi-dev --yes --force-yes
 
 DISTRO=$(lsb_release -c -s)
 if [[ ${DISTRO} =~ (oneiric|precise) ]]; then
