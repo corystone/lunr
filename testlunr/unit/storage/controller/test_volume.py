@@ -112,7 +112,7 @@ class TestVolumeController(WsgiTestBase, BaseHelper):
     def test_change_id(self):
         volume1_id = str(uuid4())
         volume1 = self.app.helper.volumes.create(volume1_id)
-        url = "/volumes/%s/change_id" % volume1_id
+        url = "/volumes/%s/change_id?new_id=new_id" % volume1_id
         resp = self.request(url, method='POST')
         self.assertEquals(resp.code // 100, 2)
 
