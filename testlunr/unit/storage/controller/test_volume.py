@@ -109,6 +109,18 @@ class TestVolumeController(WsgiTestBase, BaseHelper):
         resp = self.request(url)
         self.assertEquals(resp.code // 100, 2)
 
+    def test_change_id(self):
+        volume1_id = str(uuid4())
+        volume1 = self.app.helper.volumes.create(volume1_id)
+        url = "/volumes/%s/change_id" % volume1_id
+        resp = self.request(url, method='POST')
+        self.assertEquals(resp.code // 100, 2)
+
+    def test_change_id_404(self):
+        url = "/volumes/notfound/change_id"
+        resp = self.request(url, method='POST')
+        self.assertEquals(resp.code, 404)
+
     def test_create_id_too_long(self):
         volume_id = 'A' * 100
         url = '/volumes/%s' % volume_id

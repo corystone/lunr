@@ -773,6 +773,21 @@ class TestVolumeHelper(BaseHelper):
         v = h.volumes.get(name)
         self.assertTrue(os.path.exists(v['path']))
 
+    def test_rename(self):
+        h = base.Helper(self.conf)
+        old_name = 'volume-%s' % uuid4()
+        new_name = 'volume-%s' % uuid4()
+        out = h.volumes.create(old_name)
+        v = h.volumes.get(old_name)
+        old_path = v['path']
+
+        out = h.volumes.rename(old_name, new_name)
+
+        v = h.volumes.get(new_name)
+        self.assertTrue(os.path.exists(v['path']))
+        self.assertFalse(os.path.exists(old_path))
+        self.assertRaises(volume.NotFound, h.volumes.get, old_name)
+
     def test_get_volume(self):
         h = base.Helper(self.conf)
         name = 'volume-%s' % uuid4()

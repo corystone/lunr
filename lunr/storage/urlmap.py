@@ -32,6 +32,8 @@ lunr_connect(urlmap, '/volumes', VolumeController,
              {'GET': 'index'})
 lunr_connect(urlmap, '/volumes/{id}', VolumeController,
              {'PUT': 'create', 'GET': 'show', 'DELETE': 'delete'})
+lunr_connect(urlmap, '/volumes/{id}/change_id', VolumeController,
+             {'POST': 'change_id'})
 
 # Volume audit
 lunr_connect(urlmap, '/volumes/{id}/audit', VolumeController,

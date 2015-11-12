@@ -43,6 +43,12 @@ lunr_connect(urlmap,
 lunr_connect(urlmap, '/v1.0/{account_id}/volumes/{id}', VolumeController,
              {'PUT': 'create', 'POST': 'update', 'GET': 'show',
               'DELETE': 'delete'})
+lunr_connect(urlmap,
+             '/v1.0/{account_id}/volumes/{id}/change_id',
+             VolumeController, {'POST': 'change_id'})
+lunr_connect(urlmap,
+             '/v1.0/{account_id:admin}/volumes/{id}/change_id',
+             VolumeController, {'POST': 'change_id'})
 
 # Exports
 

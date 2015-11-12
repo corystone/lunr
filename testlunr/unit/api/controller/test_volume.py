@@ -723,6 +723,84 @@ class TestVolumeController(unittest.TestCase):
         self.assertRaises(HTTPInsufficientStorage, c.get_recommended_nodes,
                           self.vtype.name, 1, affinity=affinity)
 
+    def test_change_id(self):
+        c = Controller({'account_id': self.account_id, 'id': 'test'},
+                       self.mock_app)
+        req = Request.blank('?size=1&volume_type_name=vtype')
+        res = c.create(req)
+        self.assertEqual(res.body['id'], 'test')
+        self.assert_(res.body['node_id'])
+
+        req = Request.blank('?new_id=test2')
+        res = c.change_id(req)
+        self.assertEqual(res.body['id'], 'test2')
+
+    def test_change_id_404(self):
+        c = Controller({'account_id': self.account_id, 'id': 'test'},
+                       self.mock_app)
+        req = Request.blank('?new_id=test2')
+        self.assertRaises(HTTPNotFound, c.change_id, req)
+
+    def test_change_id_conflict(self):
+        c = Controller({'account_id': self.account_id, 'id': 'test2'},
+                       self.mock_app)
+        req = Request.blank('?size=1&volume_type_name=vtype')
+        res = c.create(req)
+        c = Controller({'account_id': self.account_id, 'id': 'test'},
+                       self.mock_app)
+        req = Request.blank('?size=1&volume_type_name=vtype')
+        res = c.create(req)
+
+        req = Request.blank('?new_id=test2')
+        self.assertRaises(HTTPPreconditionFailed, c.change_id, req)
+
+    def test_change_id_backups(self):
+        volume = db.models.Volume(id='test', node=self.node0,
+                                  account=self.account,
+                                  status='ACTIVE', size=1)
+        self.db.add(volume)
+        backup = db.models.Backup(volume, status='AVAILABLE')
+        self.db.add(backup)
+        self.db.commit()
+
+        c = Controller({'account_id': self.account_id, 'id': 'test'},
+                       self.mock_app)
+        req = Request.blank('?new_id=test2')
+        self.assertRaises(HTTPPreconditionFailed, c.change_id, req)
+
+    def test_change_id_node_req_fail(self):
+        def raise_exc(*args, **kwargs):
+            e = base.NodeError(MockRequest(), URLError("fake 503"))
+            e.code = 503
+            raise e
+        c = Controller({'account_id': self.account_id, 'id': 'test'},
+                       self.mock_app)
+        req = Request.blank('?size=1&volume_type_name=vtype')
+        res = c.create(req)
+        self.assertEqual(res.body['id'], 'test')
+        self.assert_(res.body['node_id'])
+
+        req = Request.blank('?new_id=test2')
+        with patch(Controller, 'node_request', raise_exc):
+            self.assertRaises(base.NodeError, c.change_id, req)
+
+    def test_change_id_node_req_404(self):
+        def raise_exc(*args, **kwargs):
+            e = base.NodeError(MockRequest(), URLError("fake 404"))
+            e.code = 404
+            raise e
+        c = Controller({'account_id': self.account_id, 'id': 'test'},
+                       self.mock_app)
+        req = Request.blank('?size=1&volume_type_name=vtype')
+        res = c.create(req)
+        self.assertEqual(res.body['id'], 'test')
+        self.assert_(res.body['node_id'])
+
+        req = Request.blank('?new_id=test2')
+        with patch(Controller, 'node_request', raise_exc):
+            res = c.change_id(req)
+            self.assertEqual(res.body['id'], 'test2')
+
 
 class TestVolumeApi(WsgiTestBase):
 

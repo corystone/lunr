@@ -40,6 +40,15 @@ class VolumeController(BaseController):
             raise HTTPNotFound("No volume named '%s'" % self.id)
         return Response(volume)
 
+    def change_id(self, req):
+        try:
+            volume = self.helper.volumes.get(self.id)
+        except NotFound:
+            raise HTTPNotFound("No volume named '%s'" % self.id)
+        new_id = req.params['new_id']
+        self.helper.volumes.rename(self.id, new_id)
+        return Response(volume)
+
     def _validate_iops(self, req):
         try:
             read_iops = int(req.params.get('read_iops', 0))

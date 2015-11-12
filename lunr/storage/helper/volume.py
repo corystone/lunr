@@ -244,6 +244,16 @@ class VolumeHelper(object):
             volume['status'] = 'ERROR'
         return volume
 
+    def rename(self, old_name, new_name):
+        try:
+            volume = self._get_volume(old_name)
+        except ProcessError, e:
+            raise NotFound('No volume named %s.' % old_name, id=old_name)
+
+        out = execute('lvrename', self.volume_group, old_name, new_name)
+
+        return out
+
     def restore(self, dest_volume, backup_source_volume_id,
                 backup_id, size, cinder):
         op_start = time()

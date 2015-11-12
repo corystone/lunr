@@ -293,3 +293,40 @@ class VolumeController(BaseController):
                                self.id)
         volume = self.db.query(Volume).filter_by(id=self.id).one()
         return Response(dict(volume))
+
+    def change_id(self, request):
+        try:
+            volume = self.account_query(Volume).filter_by(id=self.id).one()
+        except NoResultFound:
+            raise HTTPNotFound("Cannot show non-existent volume '%s'" %
+                               self.id)
+
+        new_id = request.params['new_id']
+        try:
+            new_volume = self.db.query(Volume).filter_by(id=new_id).one()
+            raise HTTPPreconditionFailed("Invalid new_id '%s'" % new_id)
+        except NoResultFound:
+            pass
+
+        try:
+            num_updated = self.account_query(Volume).\
+                filter_by(id=self.id).update({'id': new_id})
+        except IntegrityError:
+            raise HTTPPreconditionFailed("Invalid volume '%s'" % self.id)
+
+        try:
+            if volume.node:
+                self.node_request(volume.node, 'POST',
+                                  '/volumes/%s/change_id' % self.id,
+                                  new_id=new_id)
+        except NodeError, e:
+            if e.code == 404:
+                pass
+            else:
+                raise
+        self.db.commit()
+
+        volume = self.account_query(Volume).filter_by(id=new_id).one()
+
+        return Response(dict(volume))
+
