@@ -23,6 +23,8 @@ import urlparse
 from httplib import BadStatusLine
 import socket
 
+import sqlalchemy
+from sqlalchemy import event
 from sqlalchemy.exc import OperationalError
 from webob import Request
 from webob.exc import HTTPBadRequest, HTTPServiceUnavailable, HTTPNotFound,\
@@ -44,8 +46,8 @@ from testlunr.functional import Struct
 from testlunr.unit import patch, WsgiTestBase
 
 
-# from lunr.common import logger
-# logger.configure(log_to_console=True, capture_stdio=False)
+from lunr.common import logger
+logger.configure(log_to_console=True, capture_stdio=False)
 
 
 class MockRequest(object):
@@ -237,6 +239,7 @@ class TestVolumeController(unittest.TestCase):
         req = Request.blank('?size=1&volume_type_name=vtype')
         self.assertRaises(HTTPConflict, c.create, req)
 
+
     def test_create_fail(self):
         base.urlopen = MockUrlopenBlowup
         c = Controller({'account_id': self.account_id, 'id': 'test'},
@@ -246,6 +249,7 @@ class TestVolumeController(unittest.TestCase):
         try:
             c.create(req)
         except HTTPError, e:
+            print 'e: ', e, ' code: ', e.code
             self.assertEquals(e.code // 100, 5)
 
     def test_create_from_image(self):

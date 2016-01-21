@@ -19,7 +19,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey,\
-    Boolean, ForeignKeyConstraint
+    Boolean, ForeignKeyConstraint, BigInteger
 from sqlalchemy.orm import relation, backref, object_mapper
 from sqlalchemy.sql import func, desc
 from sqlalchemy import and_
@@ -102,6 +102,7 @@ class Node(ModelBase):
     storage_port = Column(Integer, default=3260, nullable=False)
     cinder_host = Column(String(255), nullable=False)
     affinity_group = Column(String(255), nullable=False, default='')
+    reservation = Column(BigInteger, nullable=False, default=0)
 
     @property
     def _meta(self):

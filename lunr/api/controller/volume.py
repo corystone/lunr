@@ -17,6 +17,8 @@
 import random
 import urllib2
 
+from time import sleep
+
 from webob.exc import HTTPPreconditionFailed, HTTPConflict, HTTPNotFound, \
     HTTPServiceUnavailable, HTTPBadRequest
 from webob import Response
@@ -26,8 +28,12 @@ from sqlalchemy import and_
 from lunr.api.controller.base import BaseController, NodeError
 from lunr.common import logger
 from lunr.db import NoResultFound
-from lunr.db.models import Volume, VolumeType, Backup
+from lunr.db.models import Volume, VolumeType, Backup, Node
 from lunr.db.helpers import filter_update_params
+
+
+class NodeReservationError(Exception):
+    pass
 
 
 class VolumeController(BaseController):
@@ -157,6 +163,14 @@ class VolumeController(BaseController):
         for node in nodes:
             volume.node = node
             self.db.commit()  # prevent duplicate/lost volumes
+            # See if we won the reservation.
+            updated = self.db.query(Node).\
+                filter_by(id=node.id, reservation=node.reservation).\
+                update({'reservation': node.reservation+1})
+            if not updated:
+                volume.node = None
+                self.db.commit()
+                raise NodeReservationError()
             try:
                 path = '/volumes/%s' % self.id
                 return self.node_request(node, 'PUT', path, **request_params)
@@ -197,37 +211,44 @@ class VolumeController(BaseController):
             status = 'IMAGING'
             imaging = True
 
-        nodes = self.get_recommended_nodes(volume_type.name, size,
-                                           imaging=imaging,
-                                           affinity=affinity)
 
         volume = Volume(id=self.id, account_id=self.account_id, status=status,
                         volume_type=volume_type, size=size, image_id=image_id)
         self.db.add(volume)
 
-        # issue backend request(s)
-        try:
-            volume_info = self._assign_node(volume, backup, source, nodes)
-        except IntegrityError:
-            # duplicate id
-            self.db.rollback()
-            update_params = {
-                'status': status,
-                'size': size,
-                'volume_type_name': volume_type.name,
-                'image_id': image_id,
-            }
-            # optomistic lock
-            count = self.db.query(Volume).\
-                filter(and_(Volume.id == self.id,
-                            Volume.account_id == self.account_id,
-                            Volume.status.in_(['ERROR', 'DELETED']))).\
-                update(update_params, synchronize_session=False)
-            if not count:
-                raise HTTPConflict("Volume '%s' already exists" % self.id)
-            # still in uncommited update transaction
-            volume = self.db.query(Volume).get(self.id)
-            volume_info = self._assign_node(volume, backup, source, nodes)
+        while True:
+            try:
+                nodes = self.get_recommended_nodes(volume_type.name, size,
+                                                   imaging=imaging,
+                                                   affinity=affinity)
+                # Issue backend request(s)
+                volume_info = self._assign_node(volume, backup, source,
+                                                nodes)
+                break
+            # We lost the race. Try again.
+            except NodeReservationError:
+                sleep(random.uniform(0.2, 0.5))
+
+            except IntegrityError, e:
+                # duplicate id
+                self.db.rollback()
+                update_params = {
+                    'status': status,
+                    'size': size,
+                    'volume_type_name': volume_type.name,
+                    'image_id': image_id,
+                }
+                # optomistic lock
+                count = self.db.query(Volume).\
+                    filter(and_(Volume.id == self.id,
+                                Volume.account_id == self.account_id,
+                                Volume.status.in_(['ERROR', 'DELETED']))).\
+                    update(update_params, synchronize_session=False)
+                if not count:
+                    self.db.rollback()
+                    raise HTTPConflict("Volume '%s' already exists" % self.id)
+                # still in uncommited update transaction
+                volume = self.db.query(Volume).get(self.id)
 
         volume.status = volume_info['status']
         self.db.commit()
