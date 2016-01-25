@@ -228,7 +228,6 @@ class VolumeController(BaseController):
             # We lost the race. Try again.
             except NodeReservationError:
                 sleep(random.uniform(0.2, 0.5))
-
             except IntegrityError, e:
                 # duplicate id
                 self.db.rollback()

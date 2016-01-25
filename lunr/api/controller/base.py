@@ -163,6 +163,8 @@ class BaseController(object):
             node._storage_used = storage_used
             nodes.append(node)
         if not nodes:
+            # Volume has already been added to the session. Need to nuke it.
+            self.db.rollback()
             if not self.db.query(Node)\
                    .filter_by(volume_type_name=volume_type_name,
                               status='ACTIVE').count():
