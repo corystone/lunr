@@ -274,6 +274,7 @@ class VolumeController(BaseController):
         self.db.commit()
         response = dict(volume)
         response['cinder_host'] = volume.node.cinder_host
+        response['zone'] = volume.node.zone
         return Response(response)
 
     def delete(self, request):
